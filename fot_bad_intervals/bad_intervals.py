@@ -8,8 +8,13 @@ healthcheck_msids = ['HRMA_AVE','4OAVHRMT','HRMHCHK','OBA_AVE','4OAVOBAT','TSSMA
 
 def get_intervals(msid, setname=''):
     setname = setname.lower()
+
+    dwell_mode_times = [('2015:244:13:45:00.000', '2015:244:14:45:00.000'),
+                        ('2015:294:16:28:00.000', '2015:294:16:36:00.000')]
+
     individual_msid_intervals = {'3fapsat': [('2011:190:19:43:58.729', '2011:190:19:44:58.729'),
-                                             ('2012:151:10:42:03.272', '2012:151:10:43:03.272')],
+                                             ('2012:151:10:42:03.272', '2012:151:10:43:03.272'),
+                                             ('2015:264:20:48:00.000', '2015:264:20:51:00.000')],
                                  'ohrthr15': [('2004:187:15:38:05.785', '2004:187:15:39:05.785')],
                                  'ohrthr21': [('2011:187:12:28:11.387', '2011:187:12:29:11.387')],
                                  'ohrthr22': [('2011:187:12:28:11.387', '2011:187:12:29:11.387')],
@@ -23,7 +28,16 @@ def get_intervals(msid, setname=''):
                                  'tmysada':  [('2011:190:19:47:48.329', '2011:190:19:48:48.329')],
                                  'tmzp_cnt': [('2000:299:16:20:20.183', '2000:299:16:21:20.183')],
                                  'trspotep': [('2003:127:03:50:14.592', '2003:127:03:51:14.592')],
-                                 'tsctsf2':  [('2000:055:15:23:18.602', '2000:055:15:24:18.602')]}
+                                 'tsctsf2':  [('2000:055:15:23:18.602', '2000:055:15:24:18.602')],
+                                 'cxpnait':  [('2011:299:04:57:00.000', '2011:299:05:00:00.000')],
+                                 'toxtsupn': dwell_mode_times,
+                                 '4prt5bt': dwell_mode_times,
+                                 '4rt585t': dwell_mode_times,
+                                 'airu1bt': dwell_mode_times,
+                                 'cusoaovn': dwell_mode_times,
+                                 'plaed4et': dwell_mode_times,
+                                 'pr1tv01t': dwell_mode_times,
+                                 'tcylfmzm': dwell_mode_times}
 
 
     if ('tel' in setname) or ('oob' in msid) or ('telhs' in msid) or ('ohr' in msid[:3]) \
