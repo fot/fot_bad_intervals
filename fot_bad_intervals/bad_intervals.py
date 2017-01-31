@@ -137,7 +137,7 @@ def get_intervals(msid, setname=''):
                      ('2012:151:10:31:00.000', '2012:151:10:35:00.000'),
                      ('2016:063:17:11:00', '2016:063:17:16:00')]
 
-    if msid in individual_msid_intervals.keys():
+    if msid in list(individual_msid_intervals.keys()):
         badintervals = individual_msid_intervals[msid] # list of tuples
         for badinterval in badintervals: # tuples
             intervals.append(badinterval)
@@ -149,8 +149,8 @@ def get_intervals(msid, setname=''):
 
 def get_keep_ind(times, setname, msid, stat):
     
-    setname = unicode(setname).lower()
-    stat = unicode(stat).lower()
+    setname = str(setname).lower()
+    stat = str(stat).lower()
 
     intervals = get_intervals(msid, setname)
         
