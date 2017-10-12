@@ -1,2 +1,2 @@
-from .bad_intervals import get_keep_ind, get_intervals
+from .bad_intervals import *
 from .version import __version__
