@@ -1,9 +1,142 @@
 
 import numpy as np
 from Chandra.Time import DateTime
+from kadi import events
+
 
 healthcheck_msids = ['HRMA_AVE','4OAVHRMT','HRMHCHK','OBA_AVE','4OAVOBAT','TSSMAX','TSSMIN',
                      'TABMAX','TABMIN','THSMAX','THSMIN','OHRMGRD3','OHRMGRD6']
+
+
+def filter_safing_actions(times, stat, safe_modes=True, nsm_modes=True, pad=None, transitions_only=False, tpad=None):
+
+    starts = []
+    stops = []
+    if safe_modes == True:
+        starts.extend(list(events.safe_suns.table['tstart']))
+        stops.extend(list(events.safe_suns.table['tstop']))
+
+    if nsm_modes == True:
+        starts.extend(list(events.normal_suns.table['tstart']))
+        stops.extend(list(events.normal_suns.table['tstop']))
+
+    intervals = list(zip(starts, stops))
+
+    if pad:
+        intervals = [(i1 - pad[0], i2 + pad[1]) for i1, i2 in intervals]
+
+    if transitions_only:
+        if not tpad:
+            tpad = (328, 328, 328, 328)
+
+        intervals_start = [(i1 - tpad[0], i1 + tpad[1]) for i1, i2 in intervals]
+        intervals_stop = [(i2 - tpad[2], i2 + tpad[3]) for i1, i2 in intervals]
+        intervals = intervals_start + intervals_stop
+
+    stat = str(stat).lower()
+        
+    keep = filter_intervals(times, intervals, stat)
+
+    return keep
+
+
+def filter_outliers(vals, mad_const=None):
+
+    if mad_const is None:
+
+        std = np.std(vals)
+        keep = ~(DoubleMADsFromMedian(vals) > 0.1 * std)
+
+        const = 0.1 * std
+
+        if len(keep[keep == True]) < .95 * len(keep):
+            keep = ~(DoubleMADsFromMedian(vals) > 0.5 * std)
+
+        if len(keep[keep == True]) < .95 * len(keep):
+            keep = ~(DoubleMADsFromMedian(vals) > std)
+
+        if len(keep[keep == True]) < .95 * len(keep):
+            keep = ~(DoubleMADsFromMedian(vals) > 5000 * std)
+
+        if len(keep[keep == True]) < .95 * len(keep):
+            keep = ~(DoubleMADsFromMedian(vals) > 50000 * std)
+
+    else:
+        keep = ~(DoubleMADsFromMedian(vals) > mad_const)
+
+    return keep
+
+
+def clean_ltt_data(telem, stat, mad_const=None, outlier_filter_fields=('vals')):
+
+    keep = filter_safing_actions(telem.times, stat, safe_modes=True, nsm_modes=True, transitions_only=True)
+
+    for name in telem.colnames:
+        telem.__dict__[name] = telem.__dict__[name][keep]
+
+    keeps = []
+    if (mad_const is not None) and (mad_const > 0):
+        for field in outlier_filter_fields:
+            keeps.append(filter_outliers(telem.__dict__[field], mad_const=mad_const))
+
+    merged_keep = np.array([True] * len(telem.times))
+    for keep in keeps:
+        merged_keep = merged_keep & keep
+
+    return merged_keep
+
+
+def DoubleMAD(x, zeromadaction="warn"):
+    """ Core Median Absolute Deviation Calculation    
+
+    :param x: 1 dimenional data array
+    :param zeromadaction: determines the action in the event of an MAD of zero, anything other than 'warn' will throw an exception
+
+    """
+
+    m = np.median(x)
+    absdev = np.abs(x - m)
+    leftmad = np.median(np.abs(x[x<=m]))
+    rightmad = np.median(np.abs(x[x>=m]))
+    if (leftmad == 0) or (rightmad == 0):
+        if zeromadaction.lower() == 'warn':
+            print('Median absolute deviation is zero, this may cause problems.')
+        else:
+            raise ValueError('Median absolute deviation is zero, this may cause problems.')
+    return leftmad, rightmad
+
+
+def DoubleMADsFromMedian(x, zeromadaction="warn"):
+    """ Median Absolute Deviation Calculation    
+
+    :param x: 1 dimenional data array
+    :param zeromadaction: determines the action in the event of an MAD of zero, anything other than 'warn' will throw an exception
+
+    """
+    
+    def DoubleMAD(x, zeromadaction="warn"):
+        """ Core Median Absolute Deviation Calculation    
+        """
+
+        m = np.median(x)
+        absdev = np.abs(x - m)
+        leftmad = np.median(np.abs(x[x<=m]))
+        rightmad = np.median(np.abs(x[x>=m]))
+        if (leftmad == 0) or (rightmad == 0):
+            if zeromadaction.lower() == 'warn':
+                print('Median absolute deviation is zero, this may cause problems.')
+            else:
+                raise ValueError('Median absolute deviation is zero, this may cause problems.')
+        return leftmad, rightmad
+    
+    twosidedmad = DoubleMAD(x, zeromadaction)
+    m = np.median(x)
+    xmad = np.ones(len(x)) * twosidedmad[0]
+    xmad[x > m] = twosidedmad[1]
+    maddistance = np.abs(x - m) / xmad
+    maddistance[x==m] = 0
+    return maddistance
+
 
 
 def get_intervals(msid, setname=''):
@@ -48,6 +181,8 @@ def get_intervals(msid, setname=''):
                                               ('2015:264:00:00:00.000', '2015:267:00:00:00.000'),
                                               ('2016:063:16:00:00.000', '2016:064:12:00:00.000'),
                                               ('2016:257:10:00:00.000', '2016:258:12:00:00.000')],
+                                 'aach1t': [('2016:064:01:02:00.000', '2016:064:01:06:00.000')],
+                                 'aach2t': [('2016:064:01:02:00.000', '2016:064:01:06:00.000')],
                                  'toxtsupn': dwell_mode_times,
                                  '4prt5bt': dwell_mode_times,
                                  '4rt585t': dwell_mode_times,
@@ -55,7 +190,10 @@ def get_intervals(msid, setname=''):
                                  'cusoaovn': dwell_mode_times,
                                  'plaed4et': dwell_mode_times,
                                  'pr1tv01t': dwell_mode_times,
-                                 'tcylfmzm': dwell_mode_times}
+                                 'tcylfmzm': dwell_mode_times,
+                                 'oobthr38': [('2017:074:02:15:00.000', '2017:074:02:22:00.000')],
+                                 'oobthr39': [('2017:074:02:15:00.000', '2017:074:02:22:00.000')],
+                                 }
 
 
     if ('tel' in setname) or ('oob' in msid) or ('telhs' in msid) or ('ohr' in msid[:3]) \
@@ -137,7 +275,7 @@ def get_intervals(msid, setname=''):
                      ('2012:151:10:31:00.000', '2012:151:10:35:00.000'),
                      ('2016:063:17:11:00', '2016:063:17:16:00')]
 
-    if msid in individual_msid_intervals.keys():
+    if msid in list(individual_msid_intervals.keys()):
         badintervals = individual_msid_intervals[msid] # list of tuples
         for badinterval in badintervals: # tuples
             intervals.append(badinterval)
@@ -147,15 +285,9 @@ def get_intervals(msid, setname=''):
     return intervals
 
 
-def get_keep_ind(times, setname, msid, stat):
-    
-    setname = unicode(setname).lower()
-    stat = unicode(stat).lower()
-
-    intervals = get_intervals(msid, setname)
-        
+def filter_intervals(times, intervals, stat):
     keep = np.array([True] * len(times))
-    
+
     if 'none' in stat:
         for interval in intervals:
             ind1 = times < (DateTime(interval[0]).secs)
@@ -174,5 +306,18 @@ def get_keep_ind(times, setname, msid, stat):
             ind2 = times > DateTime('{}:00:00:00.000'.format(interval[1][:8])).secs + 24*3600
             ind = ind1 | ind2 
             keep = keep & ind
+    return keep
+
+
+def get_keep_ind(times, setname, msid, stat):
+    
+    setname = str(setname).lower()
+    stat = str(stat).lower()
+
+    intervals = get_intervals(msid, setname)
+        
+    keep = filter_intervals(times, intervals, stat)
         
     return keep
+
+
