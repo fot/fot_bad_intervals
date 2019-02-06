@@ -72,7 +72,7 @@ def get_dwell_mode_intervals(t1='2015:001:00:00:00', t2=None):
     spans = find_span_indices(bad)
     timespans_en = [(DateTime(data.times[ind[0]]).date, DateTime(data.times[ind[1]]).date) for ind in spans]
     timespans_en = [(DateTime(t1).secs - 33, DateTime(t2).secs + 33) for t1, t2 in timespans_en]
-    timespans_en = ['{} {}'.format(DateTime(a).date, DateTime(b).date) for a, b in timespans_en]
+    timespans_en = [(DateTime(a).date, DateTime(b).date) for a, b in timespans_en]
     return timespans_en
 
 
