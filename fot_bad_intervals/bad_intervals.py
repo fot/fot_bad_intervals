@@ -2,11 +2,14 @@
 import numpy as np
 from Chandra.Time import DateTime
 from kadi import events
+from Ska.engarchive import fetch_eng as fetch
 
 
 healthcheck_msids = ['HRMA_AVE','4OAVHRMT','HRMHCHK','OBA_AVE','4OAVOBAT','TSSMAX','TSSMIN',
                      'TABMAX','TABMIN','THSMAX','THSMIN','OHRMGRD3','OHRMGRD6']
 
+dwell_mode_msids = ['4PRT5BT', '4RT585T', 'AFLCA3BI', 'AIRU1BT', 'CSITB5V', 'CUSOAOVN', 'ECNV3V',
+                    'PLAED4ET', 'PR1TV01T', 'TCYLFMZM', 'TOXTSUPN', 'ES1P5CV', 'ES2P5CV']
 
 def filter_safing_actions(times, stat, safe_modes=True, nsm_modes=True, pad=None, transitions_only=False, tpad=None):
 
@@ -38,6 +41,39 @@ def filter_safing_actions(times, stat, safe_modes=True, nsm_modes=True, pad=None
     keep = filter_intervals(times, intervals, stat)
 
     return keep
+
+
+def find_span_indices(dval):
+    dval = list(dval)
+    dval.insert(0, False) # Prepend to make indices line up
+    idata = np.array(dval, dtype=type(1))
+    d = np.diff(idata)
+
+    starts = d == 1
+    stops = d == -1
+
+    starts = list(starts)
+    stops = list(stops)
+
+    if idata[-1] == 1:
+        stops.insert(-1, True)
+
+    starts = np.where(starts)[0]
+    stops = np.where(stops)[0]
+    
+    return list(zip(starts, stops))
+
+
+def get_dwell_mode_intervals(t1='2015:001:00:00:00', t2=None):
+    if t2 is None:
+        t2 = DateTime().date
+    data = fetch.Msid('ctudwlmd', t1, t2, stat=None)
+    bad = data.raw_vals == 1
+    spans = find_span_indices(bad)
+    timespans_en = [(DateTime(data.times[ind[0]]).date, DateTime(data.times[ind[1]]).date) for ind in spans]
+    timespans_en = [(DateTime(t1).secs - 33, DateTime(t2).secs + 33) for t1, t2 in timespans_en]
+    timespans_en = ['{} {}'.format(DateTime(a).date, DateTime(b).date) for a, b in timespans_en]
+    return timespans_en
 
 
 def filter_outliers(vals, mad_const=None):
@@ -142,9 +178,6 @@ def DoubleMADsFromMedian(x, zeromadaction="warn"):
 def get_intervals(msid, setname=''):
     setname = setname.lower()
 
-    dwell_mode_times = [('2015:244:13:45:00.000', '2015:244:14:45:00.000'),
-                        ('2015:294:16:28:00.000', '2015:294:16:36:00.000')]
-
     individual_msid_intervals = {'3fapsat': [('2011:190:19:43:58.729', '2011:190:19:44:58.729'),
                                              ('2012:151:10:42:03.272', '2012:151:10:43:03.272'),
                                              ('2015:264:20:48:00.000', '2015:264:20:51:00.000'),
@@ -183,17 +216,15 @@ def get_intervals(msid, setname=''):
                                               ('2016:257:10:00:00.000', '2016:258:12:00:00.000')],
                                  'aach1t': [('2016:064:01:02:00.000', '2016:064:01:06:00.000')],
                                  'aach2t': [('2016:064:01:02:00.000', '2016:064:01:06:00.000')],
-                                 'toxtsupn': dwell_mode_times,
-                                 '4prt5bt': dwell_mode_times,
-                                 '4rt585t': dwell_mode_times,
-                                 'airu1bt': dwell_mode_times,
-                                 'cusoaovn': dwell_mode_times,
-                                 'plaed4et': dwell_mode_times,
-                                 'pr1tv01t': dwell_mode_times,
-                                 'tcylfmzm': dwell_mode_times,
                                  'oobthr38': [('2017:074:02:15:00.000', '2017:074:02:22:00.000')],
                                  'oobthr39': [('2017:074:02:15:00.000', '2017:074:02:22:00.000')],
-                                 }
+                                 'oobthr02': [('2017:312:16:10:00.000', '2017:312:16:12:00.000')],
+                                 'oobthr03': [('2017:312:16:10:00.000', '2017:312:16:12:00.000')],
+                                 'oobthr04': [('2017:312:16:10:00.000', '2017:312:16:12:00.000')],
+                                 'oobthr05': [('2017:312:16:10:00.000', '2017:312:16:12:00.000')],
+                                 'oobthr06': [('2017:312:16:10:00.000', '2017:312:16:12:00.000')],
+                                 'oobthr07': [('2017:312:16:10:00.000', '2017:312:16:12:00.000')]
+                                }
 
 
     if ('tel' in setname) or ('oob' in msid) or ('telhs' in msid) or ('ohr' in msid[:3]) \
@@ -234,7 +265,8 @@ def get_intervals(msid, setname=''):
                      ('2015:264:20:37:13.354', '2015:264:22:18:18.799'),
                      ('2016:063:17:11:00.000', '2016:063:17:16:00.000'),
                      ('2016:064:00:40:00.000', '2016:064:04:00:00.000'),
-                     ('2016:065:18:29:00.000', '2016:066:19:25:00.000')]
+                     ('2016:065:18:29:00.000', '2016:066:19:25:00.000'),
+                     ('2018:283:13:54:44.000', '2018:283:14:00:00.000')]
     elif 'eps' in setname:
 
         intervals = [('2000:034:00:00:00', '2000:035:00:00:00'),
@@ -249,7 +281,8 @@ def get_intervals(msid, setname=''):
                      ('2015:244:00:00:00', '2015:245:00:00:00'),
                      ('2015:264:00:00:00', '2015:266:00:00:00'),
                      ('2015:294:00:00:00', '2015:295:00:00:00'),
-                     ('2016:063:17:11:00', '2016:063:17:16:00')]
+                     ('2016:063:17:11:00', '2016:063:17:16:00'),
+                     ('2018:283:13:54:44.000', '2018:283:14:00:00.000')]
 
     elif 'isim' in setname:
 
@@ -258,13 +291,15 @@ def get_intervals(msid, setname=''):
                      ('1999:345:03:15:00', '1999:345:05:15:00'),
                      ('2000:049:01:40:00', '2000:049:02:35:00'),
                      ('2012:151:00:00:00', '2012:152:00:00:00'),
-                     ('2016:063:17:11:00', '2016:063:17:16:00')]
+                     ('2016:063:17:11:00', '2016:063:17:16:00'),
+                     ('2018:283:13:54:44.000', '2018:283:14:00:00.000')]
 
     elif 'prop' in setname:
 
         intervals = [('1999:345:03:15:00', '1999:345:05:15:00'),
                      ('2016:063:17:11:00', '2016:063:17:16:00'),
-                     ('2000:049:01:12:48.000', '2000:049:02:37:00.000')]
+                     ('2000:049:01:12:48.000', '2000:049:02:37:00.000'),
+                     ('2018:283:13:54:44.000', '2018:283:14:00:00.000')]
 
     else:
         intervals = [('1999:204:00:00:00.000', '1999:204:12:44:10.000'),
@@ -273,10 +308,16 @@ def get_intervals(msid, setname=''):
                      ('2000:049:01:37:00.000', '2000:049:02:35:00.000'),
                      ('2011:187:12:25:00.000', '2011:187:12:35:00.000'),
                      ('2012:151:10:31:00.000', '2012:151:10:35:00.000'),
-                     ('2016:063:17:11:00', '2016:063:17:16:00')]
+                     ('2016:063:17:11:00.000', '2016:063:17:16:00.000'),
+                     ('2018:283:13:54:00.000', '2018:283:14:00:00.000')]
 
     if msid in list(individual_msid_intervals.keys()):
         badintervals = individual_msid_intervals[msid] # list of tuples
+        for badinterval in badintervals: # tuples
+            intervals.append(badinterval)
+
+    if msid.upper() in dwell_mode_msids:
+        badintervals = get_dwell_mode_intervals()
         for badinterval in badintervals: # tuples
             intervals.append(badinterval)
 
