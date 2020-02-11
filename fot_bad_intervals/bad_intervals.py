@@ -69,11 +69,16 @@ def get_dwell_mode_intervals(t1='2015:001:00:00:00', t2=None):
         t2 = DateTime().date
     data = fetch.Msid('ctudwlmd', t1, t2, stat=None)
     bad = data.raw_vals == 1
-    spans = find_span_indices(bad)
-    timespans_en = [(DateTime(data.times[ind[0]]).date, DateTime(data.times[ind[1]]).date) for ind in spans]
-    timespans_en = [(DateTime(t1).secs - 33, DateTime(t2).secs + 33) for t1, t2 in timespans_en]
-    timespans_en = [(DateTime(a).date, DateTime(b).date) for a, b in timespans_en]
-    return timespans_en
+
+    if any(bad):
+        spans = find_span_indices(bad)
+        timespans_en = [(DateTime(data.times[ind[0]]).date, DateTime(data.times[ind[1]]).date) for ind in spans]
+        timespans_en = [(DateTime(t1).secs - 33, DateTime(t2).secs + 33) for t1, t2 in timespans_en]
+        timespans_en = [(DateTime(a).date, DateTime(b).date) for a, b in timespans_en]
+        return timespans_en
+
+    else:
+        return []
 
 
 def filter_outliers(vals, mad_const=None):
@@ -181,7 +186,9 @@ def get_intervals(msid, setname=''):
     individual_msid_intervals = {'3fapsat': [('2011:190:19:43:58.729', '2011:190:19:44:58.729'),
                                              ('2012:151:10:42:03.272', '2012:151:10:43:03.272'),
                                              ('2015:264:20:48:00.000', '2015:264:20:51:00.000'),
-                                             ('2016:064:00:53:00.000', '2016:064:00:56:00.000')],
+                                             ('2016:064:00:53:00.000', '2016:064:00:56:00.000'),
+                                             ('2018:285:12:49:00.000', '2018:285:12:53:00.000')],
+                                 '3tspzdet': [('2018:304:01:30:00.000', '2018:304:02:00:00.000')],
                                  'ohrthr15': [('2004:187:15:38:05.785', '2004:187:15:39:05.785')],
                                  'ohrthr21': [('2011:187:12:28:11.387', '2011:187:12:29:11.387')],
                                  'ohrthr22': [('2011:187:12:28:11.387', '2011:187:12:29:11.387')],
@@ -223,7 +230,9 @@ def get_intervals(msid, setname=''):
                                  'oobthr04': [('2017:312:16:10:00.000', '2017:312:16:12:00.000')],
                                  'oobthr05': [('2017:312:16:10:00.000', '2017:312:16:12:00.000')],
                                  'oobthr06': [('2017:312:16:10:00.000', '2017:312:16:12:00.000')],
-                                 'oobthr07': [('2017:312:16:10:00.000', '2017:312:16:12:00.000')]
+                                 'oobthr07': [('2017:312:16:10:00.000', '2017:312:16:12:00.000')],
+                                 '4oavobat': [('2018:285:12:35:00.000', '2018:285:13:15:00.000')],
+                                 'ohrmgrd1': [('2018:217:07:21:00.000', '2018:217:07:23:00.000')]
                                 }
 
 
@@ -266,7 +275,8 @@ def get_intervals(msid, setname=''):
                      ('2016:063:17:11:00.000', '2016:063:17:16:00.000'),
                      ('2016:064:00:40:00.000', '2016:064:04:00:00.000'),
                      ('2016:065:18:29:00.000', '2016:066:19:25:00.000'),
-                     ('2018:283:13:54:44.000', '2018:283:14:00:00.000')]
+                     ('2018:283:13:54:44.000', '2018:283:14:00:00.000'),
+                     ('2018:285:12:35:00.000', '2018:285:13:15:00.000')]
     elif 'eps' in setname:
 
         intervals = [('2000:034:00:00:00', '2000:035:00:00:00'),
