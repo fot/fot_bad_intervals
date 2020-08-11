@@ -1,9 +1,10 @@
 
 import numpy as np
-from Chandra.Time import DateTime
+# from Chandra.Time import DateTime
+from cxotime import CxoTime
 from kadi import events
-from Ska.engarchive import fetch_eng as fetch
-
+# from Ska.engarchive import fetch_eng as fetch
+from cheta import fetch_eng as fetch
 
 healthcheck_msids = ['HRMA_AVE','4OAVHRMT','HRMHCHK','OBA_AVE','4OAVOBAT','TSSMAX','TSSMIN',
                      'TABMAX','TABMIN','THSMAX','THSMIN','OHRMGRD3','OHRMGRD6']
@@ -66,15 +67,15 @@ def find_span_indices(dval):
 
 def get_dwell_mode_intervals(t1='2015:001:00:00:00', t2=None):
     if t2 is None:
-        t2 = DateTime().date
+        t2 = CxoTime().date
     data = fetch.Msid('ctudwlmd', t1, t2, stat=None)
     bad = data.raw_vals == 1
 
     if any(bad):
         spans = find_span_indices(bad)
-        timespans_en = [(DateTime(data.times[ind[0]]).date, DateTime(data.times[ind[1]]).date) for ind in spans]
-        timespans_en = [(DateTime(t1).secs - 33, DateTime(t2).secs + 33) for t1, t2 in timespans_en]
-        timespans_en = [(DateTime(a).date, DateTime(b).date) for a, b in timespans_en]
+        timespans_en = [(CxoTime(data.times[ind[0]]).date, CxoTime(data.times[ind[1]]).date) for ind in spans]
+        timespans_en = [(CxoTime(t1).secs - 33, CxoTime(t2).secs + 33) for t1, t2 in timespans_en]
+        timespans_en = [(CxoTime(a).date, CxoTime(b).date) for a, b in timespans_en]
         return timespans_en
 
     else:
@@ -182,12 +183,15 @@ def DoubleMADsFromMedian(x, zeromadaction="warn"):
 
 def get_intervals(msid, setname=''):
     setname = setname.lower()
+    msid = msid.lower()
 
     individual_msid_intervals = {'3fapsat': [('2011:190:19:43:58.729', '2011:190:19:44:58.729'),
                                              ('2012:151:10:42:03.272', '2012:151:10:43:03.272'),
                                              ('2015:264:20:48:00.000', '2015:264:20:51:00.000'),
                                              ('2016:064:00:53:00.000', '2016:064:00:56:00.000'),
-                                             ('2018:285:12:49:00.000', '2018:285:12:53:00.000')],
+                                             ('2018:285:12:49:00.000', '2018:285:12:53:00.000'),
+                                             ('2020:145:14:16:00.000', '2020:145:14:20:00.000'),
+                                             ('2020:146:16:25:00.000', '2020:146:16:45:00.000')],
                                  '3tspzdet': [('2018:304:01:30:00.000', '2018:304:02:00:00.000')],
                                  'ohrthr15': [('2004:187:15:38:05.785', '2004:187:15:39:05.785')],
                                  'ohrthr21': [('2011:187:12:28:11.387', '2011:187:12:29:11.387')],
@@ -210,6 +214,8 @@ def get_intervals(msid, setname=''):
                                  'tmzp_cnt': [('2000:299:16:20:20.183', '2000:299:16:21:20.183')],
                                  'trspotep': [('2003:127:03:50:14.592', '2003:127:03:51:14.592')],
                                  'tsctsf2':  [('2000:055:15:23:18.602', '2000:055:15:24:18.602')],
+                                 'tsctsf4':  [('2020:145:14:17:00.000', '2020:145:14:18:00.000'),
+                                              ('2020:146:16:28:00.000', '2020:146:16:30:00.000')],
                                  'cxpnait':  [('2011:299:04:57:00.000', '2011:299:05:00:00.000'),
                                               ('2016:064:00:52:00.000', '2016:064:00:56:00.000')],
                                  'aacccdpt': [('2011:187:12:00:00.000', '2011:191:00:00:00.000'),
@@ -237,7 +243,8 @@ def get_intervals(msid, setname=''):
 
 
     if ('tel' in setname) or ('oob' in msid) or ('telhs' in msid) or ('ohr' in msid[:3]) \
-        or (msid.upper() in healthcheck_msids):
+        or (msid.upper() in healthcheck_msids) or ('4ohtrz' in msid) \
+        or ((len(msid) == 3) and (msid[0] == 'p')):
         intervals = [('1999:204:00:00:00.000', '1999:204:12:44:10.000'),
                      ('1999:221:17:20:28.039', '1999:221:17:20:30.039'),
                      ('1999:222:05:59:14.016', '1999:222:05:59:20.016'),
@@ -278,7 +285,7 @@ def get_intervals(msid, setname=''):
                      ('2018:283:13:54:44.000', '2018:283:14:00:00.000'),
                      ('2018:285:12:35:00.000', '2018:285:13:15:00.000'),
                      ('2020:145:13:00:00.000', '2020:145:15:00:00.000'),
-                     ('2020:146:10:00:00.000', '2020:146:16:30:00.000')]
+                     ('2020:146:10:00:00.000', '2020:146:21:20:00.000')]
     elif 'eps' in setname:
 
         intervals = [('2000:034:00:00:00', '2000:035:00:00:00'),
@@ -343,20 +350,20 @@ def filter_intervals(times, intervals, stat):
 
     if 'none' in stat:
         for interval in intervals:
-            ind1 = times < (DateTime(interval[0]).secs)
-            ind2 = times > (DateTime(interval[1]).secs)
+            ind1 = times < (CxoTime(interval[0]).secs)
+            ind2 = times > (CxoTime(interval[1]).secs)
             ind = ind1 | ind2 
             keep = keep & ind
     elif '5min' in stat:
         for interval in intervals:
-            ind1 = times < (DateTime(interval[0]).secs - 180)
-            ind2 = times > (DateTime(interval[1]).secs + 180)
+            ind1 = times < (CxoTime(interval[0]).secs - 180)
+            ind2 = times > (CxoTime(interval[1]).secs + 180)
             ind = ind1 | ind2 
             keep = keep & ind
     elif 'daily' in stat:
         for interval in intervals:
-            ind1 = times < DateTime('{}:00:00:00.000'.format(interval[0][:8])).secs - 1
-            ind2 = times > DateTime('{}:00:00:00.000'.format(interval[1][:8])).secs + 24*3600
+            ind1 = times < CxoTime('{}:00:00:00.000'.format(interval[0][:8])).secs - 1
+            ind2 = times > CxoTime('{}:00:00:00.000'.format(interval[1][:8])).secs + 24*3600
             ind = ind1 | ind2 
             keep = keep & ind
     return keep
