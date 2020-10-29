@@ -242,6 +242,8 @@ def get_intervals(msid, setname=''):
                                 }
 
 
+
+
     if ('tel' in setname) or ('oob' in msid) or ('telhs' in msid) or ('ohr' in msid[:3]) \
         or (msid.upper() in healthcheck_msids) or ('4ohtrz' in msid) \
         or ((len(msid) == 3) and (msid[0] == 'p')):
@@ -320,6 +322,17 @@ def get_intervals(msid, setname=''):
                      ('2000:049:01:12:48.000', '2000:049:02:37:00.000'),
                      ('2018:283:13:54:44.000', '2018:283:14:00:00.000')]
 
+    elif 'pline' in setname:
+
+        intervals = [('1999:345:03:15:00', '1999:345:05:15:00'),
+                     ('2016:063:17:11:00', '2016:063:17:16:00'),
+                     ('2000:049:01:12:48.000', '2000:049:02:37:00.000'),
+                     ('2018:283:13:54:44.000', '2018:283:14:00:00.000'),
+                     ('2000:302:05:00:00.000', '2000:302:07:00:00.000'),
+                     ('2000:228:05:00:00.000', '2000:228:07:30:00.000'),
+                     ('2000:216:23:30:00.000', '2000:217:03:30:00.000'),
+                     ('2000:010:19:30:00.000', '2000:010:20:30:00.000')]                     
+
     else:
         intervals = [('1999:204:00:00:00.000', '1999:204:12:44:10.000'),
                      ('1999:259:17:56:00.000', '1999:259:18:14:10.000'),
@@ -345,38 +358,38 @@ def get_intervals(msid, setname=''):
     return intervals
 
 
-def filter_intervals(times, intervals, stat):
+def filter_intervals(times, intervals, stat, extra_pad):
     keep = np.array([True] * len(times))
 
     if 'none' in stat:
         for interval in intervals:
-            ind1 = times < (CxoTime(interval[0]).secs)
-            ind2 = times > (CxoTime(interval[1]).secs)
+            ind1 = times < (CxoTime(interval[0]).secs - extra_pad)
+            ind2 = times > (CxoTime(interval[1]).secs + extra_pad)
             ind = ind1 | ind2 
             keep = keep & ind
     elif '5min' in stat:
         for interval in intervals:
-            ind1 = times < (CxoTime(interval[0]).secs - 180)
-            ind2 = times > (CxoTime(interval[1]).secs + 180)
+            ind1 = times < (CxoTime(interval[0]).secs - 180 - extra_pad)
+            ind2 = times > (CxoTime(interval[1]).secs + 180 + extra_pad)
             ind = ind1 | ind2 
             keep = keep & ind
     elif 'daily' in stat:
         for interval in intervals:
-            ind1 = times < CxoTime('{}:00:00:00.000'.format(interval[0][:8])).secs - 1
-            ind2 = times > CxoTime('{}:00:00:00.000'.format(interval[1][:8])).secs + 24*3600
+            ind1 = times < (CxoTime('{}:00:00:00.000'.format(interval[0][:8])).secs - 1 - extra_pad)
+            ind2 = times > (CxoTime('{}:00:00:00.000'.format(interval[1][:8])).secs + 24*3600 + extra_pad)
             ind = ind1 | ind2 
             keep = keep & ind
     return keep
 
 
-def get_keep_ind(times, setname, msid, stat):
+def get_keep_ind(times, setname, msid, stat, extra_pad=0):
     
     setname = str(setname).lower()
     stat = str(stat).lower()
 
     intervals = get_intervals(msid, setname)
         
-    keep = filter_intervals(times, intervals, stat)
+    keep = filter_intervals(times, intervals, stat, extra_pad)
         
     return keep
 
