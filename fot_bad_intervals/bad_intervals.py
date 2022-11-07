@@ -402,7 +402,7 @@ def filter_intervals(times, intervals, stat, extra_pad=0):
         for interval in intervals:
             # ind1 = times < (CxoTime('{}:00:00:00.000'.format(interval[0][:8])).secs - 1 - extra_pad)
             # ind2 = times > (CxoTime('{}:00:00:00.000'.format(interval[1][:8])).secs + 24*3600 + extra_pad)
-            ind1 = times < (CxoTime(interval[0]).secs - 1 - extra_pad)
+            ind1 = times < (CxoTime(CxoTime(interval[0]).date[:8]).secs - 1 - extra_pad)
             ind2 = times > (CxoTime(interval[1]).secs + 24*3600 + 1 + extra_pad)
 
             ind = ind1 | ind2 
